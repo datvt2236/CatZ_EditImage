@@ -63,7 +63,7 @@ public class SpriteImporterWizard : ScriptableWizard
     private List<TextAsset> xmlAsset;
 
 
-    [MenuItem("KR/Sprite Importer")]
+    [MenuItem("CatzTool/Sprite Exporter")]
     static void CreateWizard()
     {
         ScriptableWizard.DisplayWizard<SpriteImporterWizard>("Shit fuck you", "Convert");
@@ -226,6 +226,10 @@ public class SpriteImporterWizard : ScriptableWizard
                 { // this is a sprite object
                     
                     var rect = s.rect;
+
+                    if(rect.width + rect.height <= 0)
+                        continue;
+
                     //var readableTex = s.texture;
                     //var readableTex = duplicateTexture(s.texture);
                     //string xxx = s.name + " pos: "+  s.rect.x + " " + s.rect.y + " size: " + s.rect.size + " pivot: " + s.pivot.ToString();
@@ -250,6 +254,8 @@ public class SpriteImporterWizard : ScriptableWizard
             }
 
         }
+
+        AssetDatabase.Refresh();
         EditorUtility.ClearProgressBar();
 
     }
@@ -297,7 +303,6 @@ public class SpriteImporterWizard : ScriptableWizard
         thread.Start();
         thread.Join();
 
-        AssetDatabase.Refresh();
     }
 
 
@@ -358,7 +363,7 @@ public class SpriteImporterWizard : ScriptableWizard
             thread.Start();
             thread.Join();
 
-            AssetDatabase.Refresh();
+            // AssetDatabase.Refresh();
         }
     }
 
@@ -471,6 +476,6 @@ public class SpriteImporterWizard : ScriptableWizard
         thread.Start();
         thread.Join();
 
-        AssetDatabase.Refresh();
+        // AssetDatabase.Refresh();
     }
 }

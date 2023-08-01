@@ -15,7 +15,7 @@ namespace Prankard.FlashSpriteSheetImporter
 			{ SpriteDataFormat.StarlingOrSparrowV2, new StarlingParser() }
 		};
 
-		[MenuItem ("Window/Sprite Sheet Importer")]
+		[MenuItem ("CatzTool/Sprite Sheet Importer")]
 		static void Init () {
 			SpriteSheetImporterWindow window = (SpriteSheetImporterWindow)EditorWindow.GetWindow (typeof (SpriteSheetImporterWindow));
 			window.titleContent = new GUIContent("Sprite Sheet Importer", "Sprite Sheet Importer");

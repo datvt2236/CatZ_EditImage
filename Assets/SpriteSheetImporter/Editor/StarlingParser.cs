@@ -26,6 +26,29 @@ namespace Prankard.FlashSpriteSheetImporter
 				return "xml";
 			}
 		}
+        List<string> exludesAnims = new List<string>
+        {
+            "miss","dead","dies","hit","attack","dodge","sad","cheer","shaking","retry","hair landing","hey"
+        };
+        
+        List<string> exludesNames = new List<string>
+        {
+            ".png"
+        };
+        
+
+
+        bool isFuckedAnimation(string toCompare)
+        {
+            toCompare = toCompare.ToLower();
+            foreach(var excludeAnim in exludesAnims)
+            {
+                if(toCompare.Contains(excludeAnim))
+                    return true;
+            }
+            return false;
+        }
+
 
 		//Modified line (added parameters):
 		public bool ParseAsset (Texture2D asset, TextAsset textAsset, Vector2 inputPivot, bool forcePivotOverwrite)
@@ -34,10 +57,24 @@ namespace Prankard.FlashSpriteSheetImporter
 			doc.LoadXml(textAsset.text);
 
 			XmlNodeList subTextures = doc.SelectNodes("//SubTexture");
+            
+			for (int i =  subTextures.Count - 1 ; i >= 0; i--)
+            {
+                string name = GetAttribute(subTextures[i], "name");
+                if(isFuckedAnimation(name))
+                {
+                    subTextures[i].RemoveAll();
+                }
+            }
+
+
 			List<SpriteMetaData> spriteSheet = new List<SpriteMetaData>();
 
             //bool pivotSet = false; //not used anymore
             Vector2 pivotPixels;
+
+            List<XmlNode> fuckedNodes;
+
 
 			foreach (XmlNode node in subTextures)
 			{
@@ -47,6 +84,9 @@ namespace Prankard.FlashSpriteSheetImporter
 				float y = GetFloatAttribute(node, "y");
 				float width = GetFloatAttribute(node, "width");
 				float height = GetFloatAttribute(node, "height");
+
+                if(width + height <= 0) continue;
+                
                 pivotPixels.x = inputPivot.x * width;
                 pivotPixels.y = inputPivot.y * height;
 
@@ -146,6 +186,19 @@ namespace Prankard.FlashSpriteSheetImporter
 				
                 // Make Sprite
 				SpriteMetaData smd = new SpriteMetaData();
+
+
+                //filter name
+                foreach (var excludeName in exludesNames)
+                {
+                    if (name.ToLower().Contains(excludeName.ToLower()))
+                    {   
+                       name =  name.Replace(excludeName, "");
+                       name = name.Replace(excludeName.ToLower(), "");
+                       name = name.Replace(excludeName.ToUpper(), "");
+                    }
+                }   
+
 				smd.name = name;
 				smd.rect = new Rect(x, asset.height - y - height, width, height);
 				smd.pivot = spritePivot;
