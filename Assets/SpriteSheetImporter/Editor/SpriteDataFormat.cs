@@ -5,6 +5,8 @@ namespace Prankard.FlashSpriteSheetImporter
 	public enum SpriteDataFormat
     {
         [Description("Starling or SparrowV2")]
-        StarlingOrSparrowV2
+        StarlingOrSparrowV2,
+        [Description("Json")]
+        CustomJson
     }
 }

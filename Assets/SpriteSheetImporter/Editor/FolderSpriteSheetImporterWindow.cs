@@ -16,7 +16,9 @@ namespace Prankard.FlashSpriteSheetImporter
         private static Dictionary<SpriteDataFormat, ISpriteSheetParser> spriteParsers =
             new Dictionary<SpriteDataFormat, ISpriteSheetParser>()
             {
-                { SpriteDataFormat.StarlingOrSparrowV2, new StarlingParser() }
+                { SpriteDataFormat.StarlingOrSparrowV2, new StarlingParser() },
+                { SpriteDataFormat.CustomJson, new CustomJsonParser() },
+                
             };
 
         [MenuItem("CatzTool/Folder Exporter")]
@@ -35,6 +37,7 @@ namespace Prankard.FlashSpriteSheetImporter
         private List<TextAsset> listTextAsset = new List<TextAsset>();
 
         private SpriteDataFormat dataFormat = SpriteDataFormat.StarlingOrSparrowV2;
+        private SpriteDataFormat dataFormat2 = SpriteDataFormat.CustomJson;
         private SpriteAlignment spriteAlignment = SpriteAlignment.Center;
         private bool forcePivotOverwrite = true;
         // private bool generateAnimationController = true;
@@ -97,6 +100,12 @@ namespace Prankard.FlashSpriteSheetImporter
                         TextAsset textAsset = listTextAsset[i];
 
                         if (spriteParsers[dataFormat].ParseAsset(spriteSheet, textAsset,
+                                forcePivotOverwrite ? PivotValue : new Vector2(0f, 1.0f), forcePivotOverwrite))
+                        {
+                            SplitSpriteSheet(i);
+                            continue;
+                        }
+                        if (spriteParsers[dataFormat2].ParseAsset(spriteSheet, textAsset,
                                 forcePivotOverwrite ? PivotValue : new Vector2(0f, 1.0f), forcePivotOverwrite))
                         {
                             SplitSpriteSheet(i);

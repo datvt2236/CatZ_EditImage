@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using System.Collections;
 using System.IO;
 using UnityEditor;
@@ -7,6 +8,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Globalization;
 using System.Linq;
+using SimpleJSON;
 
 /// <summary>
 /// Starling parser
@@ -17,203 +19,322 @@ using System.Linq;
 
 namespace Prankard.FlashSpriteSheetImporter
 {
-	public class StarlingParser : ISpriteSheetParser
+    public class StarlingParser : ISpriteSheetParser
     {
-		public string FileExtension
-		{
-			get
-			{
-				return "xml";
-			}
-		}
+        public string FileExtension
+        {
+            get { return "xml"; }
+        }
+
         List<string> exludesAnims = new List<string>
         {
-            "miss","dead","dies","hit","attack","dodge","sad","cheer","shaking","retry","hair landing","hey"
+            "miss", "dead", "dies", "hit", "attack", "dodge", "sad", "cheer", "shaking", "retry", "hair landing", "hey"
         };
-        
+
         List<string> exludesNames = new List<string>
         {
             ".png"
         };
-        
 
 
         bool isFuckedAnimation(string toCompare)
         {
             toCompare = toCompare.ToLower();
-            foreach(var excludeAnim in exludesAnims)
+            foreach (var excludeAnim in exludesAnims)
             {
-                if(toCompare.Contains(excludeAnim))
+                if (toCompare.Contains(excludeAnim))
                     return true;
             }
+
             return false;
         }
 
 
-		//Modified line (added parameters):
-		public bool ParseAsset (Texture2D asset, TextAsset textAsset, Vector2 inputPivot, bool forcePivotOverwrite)
-		{
-			XmlDocument doc = new XmlDocument();
-			doc.LoadXml(textAsset.text);
-
-			XmlNodeList subTextures = doc.SelectNodes("//SubTexture");
-            
-			for (int i =  subTextures.Count - 1 ; i >= 0; i--)
+        //Modified line (added parameters):
+        public bool ParseAsset(Texture2D asset, TextAsset textAsset, Vector2 inputPivot, bool forcePivotOverwrite)
+        {
+            try
             {
-                string name = GetAttribute(subTextures[i], "name");
-                if(isFuckedAnimation(name))
+                XmlDocument doc = new XmlDocument();
+                doc.LoadXml(textAsset.text);
+
+                XmlNodeList subTextures = doc.SelectNodes("//SubTexture");
+
+                for (int i = subTextures.Count - 1; i >= 0; i--)
                 {
-                    subTextures[i].RemoveAll();
-                }
-            }
-
-
-			List<SpriteMetaData> spriteSheet = new List<SpriteMetaData>();
-
-            //bool pivotSet = false; //not used anymore
-            Vector2 pivotPixels;
-
-            List<XmlNode> fuckedNodes;
-
-
-			foreach (XmlNode node in subTextures)
-			{
-				string name = GetAttribute(node, "name");
-
-				float x = GetFloatAttribute(node, "x"); 
-				float y = GetFloatAttribute(node, "y");
-				float width = GetFloatAttribute(node, "width");
-				float height = GetFloatAttribute(node, "height");
-
-                if(width + height <= 0) continue;
-                
-                pivotPixels.x = inputPivot.x * width;
-                pivotPixels.y = inputPivot.y * height;
-
-                //Debug.Log(width);
-                // Pivot (starling only, effects next sprite pivots)
-                if (!forcePivotOverwrite && (HasAttribute(node, "pivotX") || HasAttribute(node, "pivotY")))
-                {
-                    //Debug.Log(GetFloatAttribute(node, "pivotX"));
-                    pivotPixels.x = GetFloatAttribute(node, "pivotX");
-                    pivotPixels.y = GetFloatAttribute(node, "pivotY");
-                    float frameWidth = GetFloatAttribute(node, "frameWidth");
-                    float frameHeight = GetFloatAttribute(node, "frameHeight");
-
-                    if (frameWidth != 0)
-                        inputPivot.x = pivotPixels.x / frameWidth;
-                    else if (width != 0)
-                        inputPivot.x = pivotPixels.x / width;
-
-                    if (frameHeight != 0)
+                    string name = GetAttribute(subTextures[i], "name");
+                    if (isFuckedAnimation(name))
                     {
-                        inputPivot.y = 1 - pivotPixels.y / frameHeight;
-                        pivotPixels.y = frameHeight - inputPivot.y; // flip pivot
+                        subTextures[i].RemoveAll();
                     }
-                    else if (height != 0)
+                }
+
+
+                List<SpriteMetaData> spriteSheet = new List<SpriteMetaData>();
+
+                //bool pivotSet = false; //not used anymore
+                Vector2 pivotPixels;
+
+                List<XmlNode> fuckedNodes;
+
+
+                foreach (XmlNode node in subTextures)
+                {
+                    string name = GetAttribute(node, "name");
+
+                    float x = GetFloatAttribute(node, "x");
+                    float y = GetFloatAttribute(node, "y");
+                    float width = GetFloatAttribute(node, "width");
+                    float height = GetFloatAttribute(node, "height");
+
+                    if (width + height <= 0) continue;
+
+                    pivotPixels.x = inputPivot.x * width;
+                    pivotPixels.y = inputPivot.y * height;
+
+                    //Debug.Log(width);
+                    // Pivot (starling only, effects next sprite pivots)
+                    if (!forcePivotOverwrite && (HasAttribute(node, "pivotX") || HasAttribute(node, "pivotY")))
                     {
-                        inputPivot.y = 1 - pivotPixels.y / height;
-                        pivotPixels.y = height - pivotPixels.y; // flip pivot
+                        //Debug.Log(GetFloatAttribute(node, "pivotX"));
+                        pivotPixels.x = GetFloatAttribute(node, "pivotX");
+                        pivotPixels.y = GetFloatAttribute(node, "pivotY");
+                        float frameWidth = GetFloatAttribute(node, "frameWidth");
+                        float frameHeight = GetFloatAttribute(node, "frameHeight");
+
+                        if (frameWidth != 0)
+                            inputPivot.x = pivotPixels.x / frameWidth;
+                        else if (width != 0)
+                            inputPivot.x = pivotPixels.x / width;
+
+                        if (frameHeight != 0)
+                        {
+                            inputPivot.y = 1 - pivotPixels.y / frameHeight;
+                            pivotPixels.y = frameHeight - inputPivot.y; // flip pivot
+                        }
+                        else if (height != 0)
+                        {
+                            inputPivot.y = 1 - pivotPixels.y / height;
+                            pivotPixels.y = height - pivotPixels.y; // flip pivot
+                        }
+
+                        //pivotPixels.y = GetFloatAttribute(node, "pivotY");
+
+                        //Debug.Log(inputPivot.x +"," + inputPivot.y);
+
+                        /*
+                        if (width != 0)
+                            inputPivot.x = GetFloatAttribute(node, "pivotX") / width;
+                        if (height != 0)
+                            inputPivot.y = 1 - (GetFloatAttribute(node, "pivotY") / height);
+                            */
+
+
+                        //Debug.Log(inputPivot.x);
                     }
 
-                    //pivotPixels.y = GetFloatAttribute(node, "pivotY");
+                    //Vector2 spritePivot = inputPivot;
+                    // Check for zero divide
 
-                    //Debug.Log(inputPivot.x +"," + inputPivot.y);
+                    Vector2 spritePivot = new Vector2(pivotPixels.x / width, pivotPixels.y / height);
 
-                    /*
-                    if (width != 0)
-                        inputPivot.x = GetFloatAttribute(node, "pivotX") / width;
-                    if (height != 0)
-                        inputPivot.y = 1 - (GetFloatAttribute(node, "pivotY") / height);
-                        */
+                    // Adjust pivot for trim whitespace
+                    if (width != 0 && HasAttribute(node, "frameX"))
+                    {
+                        float frameX = GetFloatAttribute(node, "frameX");
+                        float frameWidth = GetFloatAttribute(node, "frameWidth");
+                        pivotPixels.x = inputPivot.x * frameWidth;
+
+                        //pivotPixels.x = frameWidth * inputPivot.x;
+
+                        spritePivot.x = (pivotPixels.x + frameX) / width;
+                        //Debug.Log(spritePivot.x + " = (" + pivotPixels.x + " + " + frameX + ") / " + width);
+
+                        //spritePivot.x = (spritePivot.x * frameWidth + frameX) / width;
+                    }
+
+                    if (height != 0 && HasAttribute(node, "frameY"))
+                    {
+                        float frameY = GetFloatAttribute(node, "frameY");
+                        float frameHeight = GetFloatAttribute(node, "frameHeight");
+                        pivotPixels.y = inputPivot.y * frameHeight;
+                        //pivotPixels.y = frameHeight * inputPivot.y;
+
+                        //spritePivot.y = ((pivotPixels.y) + frameY) / height;
+                        spritePivot.y =
+                            ((height + pivotPixels.y - frameY) / height) - (frameHeight / height); //BUGFIX on Y pivot
+                        //Debug.Log(name);
+                        //Debug.Log(spritePivot.y + " = (" + pivotPixels.y + ") / " + height);
+                        //spritePivot.y = 1 - (frameHeight - (spritePivot.y * frameHeight) + frameY) / height;
+                    }
+                    else
+                    {
+                        //Debug.Log(name);
+                        //Debug.Log(spritePivot.y + " = (" + pivotPixels.y + ") / " + height);
+                    }
+
+                    //Added security mechanism:
+                    if (float.IsNaN(spritePivot.x) || float.IsNaN(spritePivot.y))
+                    {
+                        //spritePivot is invalid, probably because the sprite dimensions are equal to 0
+                        spritePivot = Vector2.zero; //pivot is set to zero, to prevent animation errors
+                    }
+
+                    //Added security mechanism for invalid sprite dimensions (which can be generated by Adobe Animate):
+                    if (width < 0 || height < 0)
+                    {
+                        Debug.LogError("Invalid dimensions detected for sprite '" + name + "' (width=" + width +
+                                       ", height=" + height +
+                                       "). Import has to be aborted. Please check the XML file content.");
+                        return false; //prevents Unity crash!
+                    }
+
+                    // Make Sprite
+                    SpriteMetaData smd = new SpriteMetaData();
 
 
+                    //filter name
+                    foreach (var excludeName in exludesNames)
+                    {
+                        if (name.ToLower().Contains(excludeName.ToLower()))
+                        {
+                            name = name.Replace(excludeName, "");
+                            name = name.Replace(excludeName.ToLower(), "");
+                            name = name.Replace(excludeName.ToUpper(), "");
+                        }
+                    }
 
-                    //Debug.Log(inputPivot.x);
+                    smd.name = name;
+                    smd.rect = new Rect(x, asset.height - y - height, width, height);
+                    smd.pivot = spritePivot;
+                    smd.alignment = 9; // Custom Sprite alignment (not center)
+
+                    spriteSheet.Add(smd);
                 }
 
-                //Vector2 spritePivot = inputPivot;
-                // Check for zero divide
-
-                Vector2 spritePivot = new Vector2(pivotPixels.x / width, pivotPixels.y / height);
-
-                // Adjust pivot for trim whitespace
-                if (width != 0 && HasAttribute(node, "frameX"))
+                if (spriteSheet.Count != 0)
                 {
-                    float frameX = GetFloatAttribute(node, "frameX");
-                    float frameWidth = GetFloatAttribute(node, "frameWidth");
-                    pivotPixels.x = inputPivot.x * frameWidth;
+                    string assetPath = AssetDatabase.GetAssetPath(asset);
+                    TextureImporter importer = TextureImporter.GetAtPath(assetPath) as TextureImporter;
+                    importer.spritesheet = spriteSheet.ToArray();
+                    importer.textureType = TextureImporterType.Sprite;
+                    importer.spriteImportMode = SpriteImportMode.Multiple;
 
-                    //pivotPixels.x = frameWidth * inputPivot.x;
+                    var guid = AssetDatabase.AssetPathToGUID(assetPath);
+                    if (string.IsNullOrEmpty(guid))
+                    {
+                        //The following code is broken when spritesheet already exists (version 2019.1+):
+                        AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
 
-                    spritePivot.x = (pivotPixels.x + frameX) / width;
-                    //Debug.Log(spritePivot.x + " = (" + pivotPixels.x + " + " + frameX + ") / " + width);
+                        AssetDatabase.SaveAssets();
+                        AssetDatabase.Refresh();
+                    }
 
-                    //spritePivot.x = (spritePivot.x * frameWidth + frameX) / width;
-                }
-                if (height != 0 && HasAttribute(node, "frameY"))
-                {
-                    float frameY = GetFloatAttribute(node, "frameY");
-                    float frameHeight = GetFloatAttribute(node, "frameHeight");
-                    pivotPixels.y = inputPivot.y * frameHeight;
-                    //pivotPixels.y = frameHeight * inputPivot.y;
+                    //The following replacement code works when importing and reimporting:
+                    EditorUtility.SetDirty(importer);
+                    importer.SaveAndReimport();
 
-                    //spritePivot.y = ((pivotPixels.y) + frameY) / height;
-					spritePivot.y = ((height + pivotPixels.y - frameY) / height) - (frameHeight / height); //BUGFIX on Y pivot
-                    //Debug.Log(name);
-                    //Debug.Log(spritePivot.y + " = (" + pivotPixels.y + ") / " + height);
-                    //spritePivot.y = 1 - (frameHeight - (spritePivot.y * frameHeight) + frameY) / height;
+                    return true;
                 }
                 else
                 {
-                    //Debug.Log(name);
-                    //Debug.Log(spritePivot.y + " = (" + pivotPixels.y + ") / " + height);
+                    Debug.Log("No sprites found in: " + AssetDatabase.GetAssetPath(textAsset));
                 }
 
-				//Added security mechanism:
-                if(float.IsNaN(spritePivot.x) || float.IsNaN(spritePivot.y))
-                { 
-                    //spritePivot is invalid, probably because the sprite dimensions are equal to 0
-                    spritePivot = Vector2.zero; //pivot is set to zero, to prevent animation errors
-                }
+                return false;
+            }
+            catch (Exception e)
+            {
+                return false;
+            }
+        }
 
-				//Added security mechanism for invalid sprite dimensions (which can be generated by Adobe Animate):
-                if(width<0 || height<0)
-                {
-                    Debug.LogError("Invalid dimensions detected for sprite '"+name+"' (width="+width+", height="+height+"). Import has to be aborted. Please check the XML file content.");
-                    return false; //prevents Unity crash!
-                }
-				
-                // Make Sprite
-				SpriteMetaData smd = new SpriteMetaData();
+        private static float GetFloatAttribute(XmlNode node, string name, float defaultValue = 0)
+        {
+            XmlNode attribute = node.Attributes.GetNamedItem(name);
+            if (attribute == null)
+                return defaultValue;
 
+            return float.Parse(attribute.Value, CultureInfo.InvariantCulture);
+        }
+
+        private static string GetAttribute(XmlNode node, string name, string defaultValue = "")
+        {
+            XmlNode attribute = node.Attributes.GetNamedItem(name);
+            if (attribute == null)
+                return defaultValue;
+            return attribute.Value;
+        }
+
+        private static bool HasAttribute(XmlNode node, string name)
+        {
+            return node.Attributes.GetNamedItem(name) != null;
+        }
+    }
+
+    public class CustomJsonParser : ISpriteSheetParser
+    {
+        public string FileExtension
+        {
+            get { return "json"; }
+        }
+
+        List<string> exludesAnims = new List<string>
+        {
+            "miss", "dead", "dies", "hit", "attack", "dodge", "sad", "cheer", "shaking", "retry", "hair landing", "hey"
+        };
+
+        List<string> exludesNames = new List<string>
+        {
+            ".png"
+        };
+
+        public bool ParseAsset(Texture2D asset, TextAsset textAsset, Vector2 pivot, bool forcePivotOverwrite)
+        {
+            string jsonString = textAsset.text;
+            JSONNode listFrame = JSONNode.Parse(jsonString)["frames"];
+
+            List<SpriteMetaData> spriteSheet = new List<SpriteMetaData>();
+
+            foreach (KeyValuePair<string, JSONNode> n in listFrame.Linq)
+            {
+                SpriteMetaData smd = new SpriteMetaData();
+
+                string name = n.Key;
+
+                if (isFuckedAnimation(name)) continue;
 
                 //filter name
                 foreach (var excludeName in exludesNames)
                 {
                     if (name.ToLower().Contains(excludeName.ToLower()))
-                    {   
-                       name =  name.Replace(excludeName, "");
-                       name = name.Replace(excludeName.ToLower(), "");
-                       name = name.Replace(excludeName.ToUpper(), "");
+                    {
+                        name = name.Replace(excludeName, "");
+                        name = name.Replace(excludeName.ToLower(), "");
+                        name = name.Replace(excludeName.ToUpper(), "");
                     }
-                }   
+                }
 
-				smd.name = name;
-				smd.rect = new Rect(x, asset.height - y - height, width, height);
-				smd.pivot = spritePivot;
-				smd.alignment = 9; // Custom Sprite alignment (not center)
+                float x = n.Value["frame"]["x"];
+                float y = n.Value["frame"]["y"];
+                float width = n.Value["frame"]["w"];
+                float height = n.Value["frame"]["h"];
 
-				spriteSheet.Add(smd);
-			}
-			
-			if (spriteSheet.Count != 0)
-			{
-				string assetPath = AssetDatabase.GetAssetPath(asset);
-				TextureImporter importer = TextureImporter.GetAtPath(assetPath) as TextureImporter;
-				importer.spritesheet = spriteSheet.ToArray();
-				importer.textureType = TextureImporterType.Sprite;
-				importer.spriteImportMode = SpriteImportMode.Multiple;
+                smd.name = name;
+                smd.rect = new Rect(x, asset.height - y - height, width, height);
+                smd.pivot = pivot;
+                smd.alignment = 9; // Custom Sprite alignment (not center)
+
+                spriteSheet.Add(smd);
+            }
+
+            if (spriteSheet.Count != 0)
+            {
+                string assetPath = AssetDatabase.GetAssetPath(asset);
+                TextureImporter importer = TextureImporter.GetAtPath(assetPath) as TextureImporter;
+                importer.spritesheet = spriteSheet.ToArray();
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Multiple;
 
                 var guid = AssetDatabase.AssetPathToGUID(assetPath);
                 if (string.IsNullOrEmpty(guid))
@@ -226,38 +347,29 @@ namespace Prankard.FlashSpriteSheetImporter
                 }
 
                 //The following replacement code works when importing and reimporting:
-                EditorUtility.SetDirty ( importer );
-                importer.SaveAndReimport ();
+                EditorUtility.SetDirty(importer);
+                importer.SaveAndReimport();
 
                 return true;
-			}
-			else
-			{
-				Debug.Log("No sprites found in: " + AssetDatabase.GetAssetPath(textAsset));
-			}
-			return false;
-		}
+            }
+            else
+            {
+                Debug.Log("No sprites found in: " + AssetDatabase.GetAssetPath(textAsset));
+            }
 
-        private static float GetFloatAttribute(XmlNode node, string name, float defaultValue = 0)
-        {
-            XmlNode attribute = node.Attributes.GetNamedItem(name);
-            if (attribute == null)
-                return defaultValue;
-
-            return float.Parse(attribute.Value, CultureInfo.InvariantCulture);
+            return false;
         }
-		
-		private static string GetAttribute(XmlNode node, string name, string defaultValue="")
-		{
-			XmlNode attribute = node.Attributes.GetNamedItem(name);
-			if (attribute == null)
-				return defaultValue;
-			return attribute.Value;
-		}
 
-        private static bool HasAttribute(XmlNode node, string name)
+        bool isFuckedAnimation(string toCompare)
         {
-            return node.Attributes.GetNamedItem(name) != null;
+            toCompare = toCompare.ToLower();
+            foreach (var excludeAnim in exludesAnims)
+            {
+                if (toCompare.Contains(excludeAnim))
+                    return true;
+            }
+
+            return false;
         }
-	}
+    }
 }
